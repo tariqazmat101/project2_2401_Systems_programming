@@ -78,6 +78,7 @@ void manager_run(Manager *manager) {
         }
 
         if (no_oxygen_flag || distance_reached_flag) {
+            printf("Terminated");
             status = TERMINATE;
             manager->simulation_running = 0;
         }

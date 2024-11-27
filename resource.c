@@ -16,19 +16,28 @@
  * @param[in]  amount        Initial amount of the resource.
  * @param[in]  max_capacity  Maximum capacity of the resource.
  */
-void resource_create(Resource **resource, const char *name, int amount, int max_capacity) {
-    // Dynamically allocate memory for the name and copy it
-    (*resource)->name = (char *)malloc(strlen(name) + 1);
-    if ((*resource)->name == NULL) {
-        fprintf(stderr, "Failed to allocate memory for Resource name.\n");
-        exit(EXIT_FAILURE);
-    }
-    strcpy((*resource)->name, name);
+ void resource_create(Resource **resource, const char *name, int amount, int max_capacity) {
+     // Allocate memory for the Resource structure
+     *resource = (Resource *)malloc(sizeof(Resource));
+     if (*resource == NULL) {
+         fprintf(stderr, "Failed to allocate memory for Resource.\n");
+         exit(EXIT_FAILURE);
+     }
 
-    // Initialize the fields
-    (*resource)->amount = amount;
-    (*resource)->max_capacity = max_capacity;
-}
+     // Allocate memory for the name and copy it
+     (*resource)->name = (char *)malloc(strlen(name) + 1);
+     if ((*resource)->name == NULL) {
+         fprintf(stderr, "Failed to allocate memory for Resource name.\n");
+         free(*resource); // Avoid memory leak
+         exit(EXIT_FAILURE);
+     }
+     strcpy((*resource)->name, name);
+
+     // Initialize the fields
+     (*resource)->amount = amount;
+     (*resource)->max_capacity = max_capacity;
+ }
+
 /**
  * Destroys a `Resource` object.
  *
@@ -95,8 +104,7 @@ void resource_array_clean(ResourceArray *array) {
     // Iterate through the resources and destroy each one
     for (int i = 0; i < array->size; i++) {
         if (array->resources[i] != NULL) {
-            resource_destroy(array->resources[i]); // Free the resource itself
-            free(array->resources[i]);            // Free the allocated memory for the resource pointer
+            resource_destroy(array->resources[i]); // Frees the resource and its name
         }
     }
 
@@ -107,7 +115,8 @@ void resource_array_clean(ResourceArray *array) {
     array->resources = NULL;
     array->size = 0;
     array->capacity = 0;
-}/**
+}
+/*
  * Adds a `Resource` to the `ResourceArray`, resizing if necessary (doubling the size).
  *
  * Resizes the array when the capacity is reached and adds the new `Resource`.
