@@ -16,18 +16,18 @@
  * @param[in]  amount        Initial amount of the resource.
  * @param[in]  max_capacity  Maximum capacity of the resource.
  */
-void resource_create(Resource *resource, const char *name, int amount, int max_capacity) {
+void resource_create(Resource **resource, const char *name, int amount, int max_capacity) {
     // Dynamically allocate memory for the name and copy it
-    resource->name = (char *)malloc(strlen(name) + 1);
-    if (resource->name == NULL) {
+    (*resource)->name = (char *)malloc(strlen(name) + 1);
+    if ((*resource)->name == NULL) {
         fprintf(stderr, "Failed to allocate memory for Resource name.\n");
         exit(EXIT_FAILURE);
     }
-    strcpy(resource->name, name);
+    strcpy((*resource)->name, name);
 
     // Initialize the fields
-    resource->amount = amount;
-    resource->max_capacity = max_capacity;
+    (*resource)->amount = amount;
+    (*resource)->max_capacity = max_capacity;
 }
 /**
  * Destroys a `Resource` object.
@@ -116,4 +116,31 @@ void resource_array_clean(ResourceArray *array) {
  * @param[in,out] array     Pointer to the `ResourceArray`.
  * @param[in]     resource  Pointer to the `Resource` to add.
  */
-void resource_array_add(ResourceArray *array, Resource *resource) {}
+ void resource_array_add(ResourceArray *array, Resource *resource) {
+     // Check if resource or array is NULL
+     if (array == NULL || resource == NULL) {
+         fprintf(stderr, "Error: Null array or resource.\n");
+         return;
+     }
+
+     // If size + 1 exceeds capacity, increase capacity
+     if (array->size + 1 > array->capacity) {
+         int new_capacity = (array->capacity == 0) ? 1 : array->capacity * 2;
+
+         // Reallocate memory for the array
+         Resource **new_array = realloc(array->resources, new_capacity * sizeof(Resource *));
+         if (new_array == NULL) {
+             fprintf(stderr, "Error: Memory allocation failed.\n");
+             return;
+         }
+
+         array->resources = new_array;
+         array->capacity = new_capacity;
+     }
+
+     // Add the resource to the array
+     array-> resources[array->size] = resource;
+
+     // Increment the size of the array
+     array->size++;
+ }

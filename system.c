@@ -24,7 +24,29 @@ static int system_store_resources(System *);
  * @param[in]  processing_time Processing time in milliseconds.
  * @param[in]  event_queue     Pointer to the `EventQueue` for event handling.
  */
-void system_create(System **system, const char *name, ResourceAmount consumed, ResourceAmount produced, int processing_time, EventQueue *event_queue) {}
+void system_create(System **system, const char *name, ResourceAmount consumed, ResourceAmount produced, int processing_time, EventQueue *event_queue) {
+  // Allocate memory for the System structure
+    *system = (System *)malloc(sizeof(System));
+    if (*system == NULL) {
+        fprintf(stderr, "Memory allocation failed for System.\n");
+        return;
+    }
+
+    // Allocate memory and copy the name
+    (*system)->name = (char *)malloc(strlen(name) + 1); // +1 for the null terminator
+    if ((*system)->name == NULL) {
+        fprintf(stderr, "Memory allocation failed for System name.\n");
+        free(*system); // Free the allocated memory for System
+        return;
+    }
+    strcpy((*system)->name, name);
+
+    // Initialize the other fields
+    (*system)->consumed = consumed;
+    (*system)->produced = produced;
+    (*system)->processing_time = processing_time;
+    (*system)->event_queue = event_queue;
+}
 
 /**
  * Destroys a `System` object.
@@ -33,7 +55,21 @@ void system_create(System **system, const char *name, ResourceAmount consumed, R
  *
  * @param[in,out] system  Pointer to the `System` to be destroyed.
  */
-void system_destroy(System *system) {}
+void system_destroy(System *system) {
+    if (system == NULL) {
+        return; // Nothing to destroy
+    }
+
+    // Free the dynamically allocated name field
+    if (system->name != NULL) {
+        free(system->name);
+        system->name = NULL; // Avoid dangling pointer
+    }
+
+    // Free the System object itself
+    free(system);
+
+    }
 
 
 /**
