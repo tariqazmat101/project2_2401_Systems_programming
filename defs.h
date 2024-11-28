@@ -30,6 +30,15 @@
 #define PRIORITY_MED 2
 #define PRIORITY_LOW 1
 
+
+#include <pthread.h>
+
+// Existing definitions...
+
+// Forward declarations for thread functions
+void* system_thread(void* arg);
+void* manager_thread(void* arg);
+
 // Represents the resource amounts for the entire rocket
 typedef struct Resource {
     char *name;      // Dynamically allocated string

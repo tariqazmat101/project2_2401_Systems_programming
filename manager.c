@@ -4,6 +4,37 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
+#include <pthread.h>
+#include <semaphore.h>
+
+extern sem_t resource_sem; // Semaphore for synchronizing resource access
+
+/**
+ * Thread function for the manager.
+ *
+ * @param[in] arg Pointer to the Manager struct.
+ * @return    NULL
+ */
+void* manager_thread(void* arg) {
+    Manager* manager = (Manager*)arg;
+
+    while (manager->simulation_running) {
+        // Synchronize access to shared resources
+        sem_wait(&resource_sem);
+
+        // Call manager_run() to perform manager-specific operations
+        manager_run(manager);
+
+        sem_post(&resource_sem);
+
+        // Sleep for a short duration to simulate time between operations
+        sleep(1);
+    }
+
+    printf("Manager thread terminating.\n");
+    pthread_exit(NULL);
+}
+
 
 // This function is only used by this file, so declared here and set to static to avoid having it linked by any other file
 

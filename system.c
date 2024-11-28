@@ -25,32 +25,34 @@ static int system_store_resources(System *);
  * @param[in]  event_queue     Pointer to the `EventQueue` for event handling.
  * @return                     STATUS_OK on success, STATUS_FAILURE on error.
  */
-void system_create(System **system, const char *name, ResourceAmount consumed, ResourceAmount produced, int processing_time, EventQueue *event_queue) {
-    // Allocate memory for the System structure
-    *system = (System *)malloc(sizeof(System));
-    if (*system == NULL) {
-        fprintf(stderr, "Memory allocation failed for System.\n");
-        exit(EXIT_FAILURE);
-    }
 
-    // Allocate memory and copy the name
-    (*system)->name = (char *)malloc(strlen(name) + 1); // +1 for the null terminator
-    if ((*system)->name == NULL) {
-        fprintf(stderr, "Memory allocation failed for System name.\n");
-        free(*system); // Free the allocated memory for System
-        exit(EXIT_FAILURE);
-    }
-    strcpy((*system)->name, name);
+ /**
+  * Thread function for individual systems.
+  *
+  * @param[in] arg Pointer to the System struct.
+  * @return    NULL
+  */
+extern sem_t resource_sem; // Semaphore for synchronizing resource access
 
-    // Initialize the other fields
-    (*system)->consumed = consumed;
-    (*system)->produced = produced;
-    (*system)->processing_time = processing_time;
-    (*system)->event_queue = event_queue;
-    (*system)->amount_stored = 0;
-    (*system)->status = STATUS_OK;
+ void* system_thread(void* arg) {
+     System* system = (System*)arg;
 
-}
+     while (system->status != TERMINATE) {
+         // Synchronize access to shared resources
+         sem_wait(&resource_sem);
+
+         // Call system_run() to perform system-specific operations
+         system_run(system);
+
+         sem_post(&resource_sem);
+
+         // Sleep for a short duration to simulate time between operations
+         sleep(1);
+     }
+
+     printf("System %s terminating.\n", system->name);
+     pthread_exit(NULL);
+ }
 
 /**
  * Destroys a `System` object.
