@@ -23,13 +23,14 @@ static int system_store_resources(System *);
  * @param[in]  produced        `ResourceAmount` representing the resource produced.
  * @param[in]  processing_time Processing time in milliseconds.
  * @param[in]  event_queue     Pointer to the `EventQueue` for event handling.
+ * @return                     STATUS_OK on success, STATUS_FAILURE on error.
  */
-void system_create(System **system, const char *name, ResourceAmount consumed, ResourceAmount produced, int processing_time, EventQueue *event_queue) {
-  // Allocate memory for the System structure
+int system_create(System **system, const char *name, ResourceAmount consumed, ResourceAmount produced, int processing_time, EventQueue *event_queue) {
+    // Allocate memory for the System structure
     *system = (System *)malloc(sizeof(System));
     if (*system == NULL) {
         fprintf(stderr, "Memory allocation failed for System.\n");
-        return;
+        return STATUS_FAILURE;
     }
 
     // Allocate memory and copy the name
@@ -37,7 +38,7 @@ void system_create(System **system, const char *name, ResourceAmount consumed, R
     if ((*system)->name == NULL) {
         fprintf(stderr, "Memory allocation failed for System name.\n");
         free(*system); // Free the allocated memory for System
-        return;
+        return STATUS_FAILURE;
     }
     strcpy((*system)->name, name);
 
@@ -46,6 +47,10 @@ void system_create(System **system, const char *name, ResourceAmount consumed, R
     (*system)->produced = produced;
     (*system)->processing_time = processing_time;
     (*system)->event_queue = event_queue;
+    (*system)->amount_stored = 0;
+    (*system)->status = STATUS_OK;
+
+    return STATUS_OK;
 }
 
 /**
@@ -68,9 +73,7 @@ void system_destroy(System *system) {
 
     // Free the System object itself
     free(system);
-
-    }
-
+}
 
 /**
  * Runs the main loop for a `System`.
@@ -84,17 +87,17 @@ void system_destroy(System *system) {
 void system_run(System *system) {
     Event event;
     int result_status;
-    
+
     if (system->amount_stored == 0) {
         // Need to convert resources (consume and process)
         result_status = system_convert(system);
 
         if (result_status != STATUS_OK) {
             // Report that resources were out / insufficient
-            event_init(&event, system, system->consumed.resource, result_status, PRIORITY_HIGH, system->consumed.resource->amount);
-            event_queue_push(system->event_queue, &event);    
+            event_init(&event, system, system->consumed.resource, result_status, PRIORITY_HIGH, system->consumed.amount);
+            event_queue_push(system->event_queue, &event);
             // Sleep to prevent looping too frequently and spamming with events
-            usleep(SYSTEM_WAIT_TIME * 1000);          
+            usleep(SYSTEM_WAIT_TIME * 1000);
         }
     }
 
@@ -103,7 +106,7 @@ void system_run(System *system) {
         result_status = system_store_resources(system);
 
         if (result_status != STATUS_OK) {
-            event_init(&event, system, system->produced.resource, result_status, PRIORITY_LOW, system->produced.resource->amount);
+            event_init(&event, system, system->produced.resource, result_status, PRIORITY_LOW, system->produced.amount);
             event_queue_push(system->event_queue, &event);
             // Sleep to prevent looping too frequently and spamming with events
             usleep(SYSTEM_WAIT_TIME * 1000);
@@ -117,9 +120,8 @@ void system_run(System *system) {
  * Handles the consumption of required resources and simulates processing time.
  * Updates the amount of produced resources based on the system's configuration.
  *
- * @param[in,out] system           Pointer to the `System` performing the conversion.
- * @param[out]    amount_produced  Pointer to the integer tracking the amount of produced resources.
- * @return                         `STATUS_OK` if successful, or an error status code.
+ * @param[in,out] system  Pointer to the `System` performing the conversion.
+ * @return                `STATUS_OK` if successful, or an error status code.
  */
 static int system_convert(System *system) {
     int status;
@@ -144,8 +146,7 @@ static int system_convert(System *system) {
 
         if (system->produced.resource != NULL) {
             system->amount_stored += system->produced.amount;
-        }
-        else {
+        } else {
             system->amount_stored = 0;
         }
     }
@@ -184,12 +185,11 @@ static void system_simulate_process_time(System *system) {
  * Stores produced resources in a `System`.
  *
  * Attempts to add the produced resources to the corresponding resource's amount,
- * considering the maximum capacity. Updates the `produced_resource_count` to reflect
+ * considering the maximum capacity. Updates the `amount_stored` to reflect
  * any leftover resources that couldn't be stored.
  *
- * @param[in,out] system                   Pointer to the `System` storing resources.
- * @param[in,out] produced_resource_count  Pointer to the integer value of how many resources need to be stored, updated with the amount that could not be stored.
- * @return                                 `STATUS_OK` if all resources were stored, or `STATUS_CAPACITY` if not all could be stored.
+ * @param[in,out] system  Pointer to the `System` storing resources.
+ * @return                `STATUS_OK` if all resources were stored, or `STATUS_CAPACITY` if not all could be stored.
  */
 static int system_store_resources(System *system) {
     Resource *produced_resource = system->produced.resource;
@@ -223,7 +223,6 @@ static int system_store_resources(System *system) {
     return STATUS_OK;
 }
 
-
 /**
  * Initializes the `SystemArray`.
  *
@@ -240,7 +239,6 @@ void system_array_init(SystemArray *array) {
         exit(EXIT_FAILURE);
     }
 }
-
 
 /**
  * Cleans up the `SystemArray` by destroying all systems and freeing memory.
@@ -263,7 +261,6 @@ void system_array_clean(SystemArray *array) {
     }
 }
 
-
 /**
  * Adds a `System` to the `SystemArray`, resizing if necessary (doubling the size).
  *
@@ -273,28 +270,28 @@ void system_array_clean(SystemArray *array) {
  * @param[in,out] array   Pointer to the `SystemArray`.
  * @param[in]     system  Pointer to the `System` to add.
  */
- void system_array_add(SystemArray *array, System *system) {
-     // Check if we need to resize
-     if (array->size >= array->capacity) {
-         // Double the capacity
-         size_t new_capacity = array->capacity * 2;
-         System **new_systems = (System **)malloc(new_capacity * sizeof(System *));
-         if (!new_systems) {
-             fprintf(stderr, "Failed to allocate memory while resizing SystemArray.\n");
-             exit(EXIT_FAILURE);
-         }
+void system_array_add(SystemArray *array, System *system) {
+    if (array->size >= array->capacity) {
+        size_t new_capacity = (array->capacity == 0) ? 1 : array->capacity * 2;
+        System **new_systems = (System **)malloc(new_capacity * sizeof(System *));
+        if (!new_systems) {
+            fprintf(stderr, "Failed to allocate memory while resizing SystemArray.\n");
+            exit(EXIT_FAILURE);
+        }
 
-         // Copy the existing systems to the new array
-         for (size_t i = 0; i < array->size; i++) {
-             new_systems[i] = array->systems[i];
-         }
+        // Copy existing systems to new array
+        for (size_t i = 0; i < array->size; i++) {
+            new_systems[i] = array->systems[i];
+        }
 
-         // Free the old array and update pointers
-         free(array->systems);
-         array->systems = new_systems;
-         array->capacity = new_capacity;
-     }
+        // Free old array
+        free(array->systems);
 
-     // Add the new system
-     array->systems[array->size++] = system;
- }
+        // Update array pointers and capacity
+        array->systems = new_systems;
+        array->capacity = new_capacity;
+    }
+
+    // Add the new system
+    array->systems[array->size++] = system;
+}

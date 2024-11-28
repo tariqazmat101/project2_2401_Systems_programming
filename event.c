@@ -29,42 +29,91 @@ void event_init(Event *event, System *system, Resource *resource, int status, in
 /**
  * Initializes the `EventQueue`.
  *
- * Sets up the queue for use, initializing any necessary data (e.g., semaphores when threading).
+ * Sets up the queue for use, initializing any necessary data.
  *
  * @param[out] queue  Pointer to the `EventQueue` to initialize.
  */
-void event_queue_init(EventQueue *queue) {}
+void event_queue_init(EventQueue *queue) {
+    queue->head = NULL;
+    queue->size = 0;
+}
 
 /**
  * Cleans up the `EventQueue`.
  *
  * Frees any memory and resources associated with the `EventQueue`.
- * 
+ *
  * @param[in,out] queue  Pointer to the `EventQueue` to clean.
  */
-void event_queue_clean(EventQueue *queue) {}
+void event_queue_clean(EventQueue *queue) {
+    EventNode *current = queue->head;
+    while (current != NULL) {
+        EventNode *temp = current;
+        current = current->next;
+        free(temp);
+    }
+    queue->head = NULL;
+    queue->size = 0;
+}
 
 /**
  * Pushes an `Event` onto the `EventQueue`.
  *
- * Adds the event to the queue in a thread-safe manner, maintaining priority order (highest first).
+ * Adds the event to the queue, maintaining priority order (highest first).
+ * Ensures that older events of the same priority come before newer ones.
  *
  * @param[in,out] queue  Pointer to the `EventQueue`.
  * @param[in]     event  Pointer to the `Event` to push onto the queue.
  */
-void event_queue_push(EventQueue *queue, const Event *event) {}
+void event_queue_push(EventQueue *queue, const Event *event) {
+    // Create a new EventNode
+    EventNode *new_node = (EventNode *)malloc(sizeof(EventNode));
+    if (new_node == NULL) {
+        fprintf(stderr, "Memory allocation failed for EventNode.\n");
+        exit(EXIT_FAILURE);
+    }
+    // Copy the event data into the new node
+    new_node->event = *event;
+    new_node->next = NULL;
+
+    // Special case: Empty queue or new node has higher priority than head
+    if (queue->head == NULL || event->priority > queue->head->event.priority) {
+        new_node->next = queue->head;
+        queue->head = new_node;
+    } else {
+        // Traverse the queue to find the correct insertion point
+        EventNode *current = queue->head;
+        EventNode *previous = NULL;
+        while (current != NULL && current->event.priority >= event->priority) {
+            previous = current;
+            current = current->next;
+        }
+        // Insert the new node
+        previous->next = new_node;
+        new_node->next = current;
+    }
+    queue->size++;
+}
 
 /**
  * Pops an `Event` from the `EventQueue`.
  *
- * Removes the highest priority event from the queue in a thread-safe manner.
+ * Removes the highest-priority event from the queue.
  *
  * @param[in,out] queue  Pointer to the `EventQueue`.
  * @param[out]    event  Pointer to the `Event` structure to store the popped event.
  * @return               Non-zero if an event was successfully popped; zero otherwise.
  */
 int event_queue_pop(EventQueue *queue, Event *event) {
-    // Temporarily, this only returns 0 so that it is ignored 
-    // during early testing. Replace this with the correct logic.
-    return 0;
+    if (queue->head == NULL) {
+        // Queue is empty
+        return 0;
+    }
+    // Remove the head node
+    EventNode *temp = queue->head;
+    *event = temp->event; // Copy the event data
+    queue->head = temp->next;
+    free(temp);
+    queue->size--;
+    return 1; // Indicate that an event was successfully popped
 }

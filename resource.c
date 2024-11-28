@@ -15,28 +15,31 @@
  * @param[in]  name          Name of the resource (the string is copied).
  * @param[in]  amount        Initial amount of the resource.
  * @param[in]  max_capacity  Maximum capacity of the resource.
+ * @return                   STATUS_OK on success, STATUS_FAILURE on error.
  */
- void resource_create(Resource **resource, const char *name, int amount, int max_capacity) {
-     // Allocate memory for the Resource structure
-     *resource = (Resource *)malloc(sizeof(Resource));
-     if (*resource == NULL) {
-         fprintf(stderr, "Failed to allocate memory for Resource.\n");
-         exit(EXIT_FAILURE);
-     }
+int resource_create(Resource **resource, const char *name, int amount, int max_capacity) {
+    // Allocate memory for the Resource structure
+    *resource = (Resource *)malloc(sizeof(Resource));
+    if (*resource == NULL) {
+        fprintf(stderr, "Failed to allocate memory for Resource.\n");
+        return STATUS_FAILURE;
+    }
 
-     // Allocate memory for the name and copy it
-     (*resource)->name = (char *)malloc(strlen(name) + 1);
-     if ((*resource)->name == NULL) {
-         fprintf(stderr, "Failed to allocate memory for Resource name.\n");
-         free(*resource); // Avoid memory leak
-         exit(EXIT_FAILURE);
-     }
-     strcpy((*resource)->name, name);
+    // Allocate memory for the name and copy it
+    (*resource)->name = (char *)malloc(strlen(name) + 1);
+    if ((*resource)->name == NULL) {
+        fprintf(stderr, "Failed to allocate memory for Resource name.\n");
+        free(*resource); // Avoid memory leak
+        return STATUS_FAILURE;
+    }
+    strcpy((*resource)->name, name);
 
-     // Initialize the fields
-     (*resource)->amount = amount;
-     (*resource)->max_capacity = max_capacity;
- }
+    // Initialize the fields
+    (*resource)->amount = amount;
+    (*resource)->max_capacity = max_capacity;
+
+    return STATUS_OK;
+}
 
 /**
  * Destroys a `Resource` object.
@@ -46,8 +49,11 @@
  * @param[in,out] resource  Pointer to the `Resource` to be destroyed.
  */
 void resource_destroy(Resource *resource) {
-   if (resource != NULL) {
-        free(resource->name);
+    if (resource != NULL) {
+        if (resource->name != NULL) {
+            free(resource->name);
+            resource->name = NULL;
+        }
         free(resource);
     }
 }
@@ -116,40 +122,50 @@ void resource_array_clean(ResourceArray *array) {
     array->size = 0;
     array->capacity = 0;
 }
+
 /*
  * Adds a `Resource` to the `ResourceArray`, resizing if necessary (doubling the size).
  *
  * Resizes the array when the capacity is reached and adds the new `Resource`.
  * Use of realloc is NOT permitted.
- * 
+ *
  * @param[in,out] array     Pointer to the `ResourceArray`.
  * @param[in]     resource  Pointer to the `Resource` to add.
  */
- void resource_array_add(ResourceArray *array, Resource *resource) {
-     // Check if resource or array is NULL
-     if (array == NULL || resource == NULL) {
-         fprintf(stderr, "Error: Null array or resource.\n");
-         return;
-     }
+void resource_array_add(ResourceArray *array, Resource *resource) {
+    // Check if resource or array is NULL
+    if (array == NULL || resource == NULL) {
+        fprintf(stderr, "Error: Null array or resource.\n");
+        return;
+    }
 
-     // If size + 1 exceeds capacity, increase capacity
-     if (array->size + 1 > array->capacity) {
-         int new_capacity = (array->capacity == 0) ? 1 : array->capacity * 2;
+    // If size equals capacity, increase capacity
+    if (array->size >= array->capacity) {
+        int new_capacity = (array->capacity == 0) ? 1 : array->capacity * 2;
 
-         // Reallocate memory for the array
-         Resource **new_array = realloc(array->resources, new_capacity * sizeof(Resource *));
-         if (new_array == NULL) {
-             fprintf(stderr, "Error: Memory allocation failed.\n");
-             return;
-         }
+        // Allocate new array
+        Resource **new_array = (Resource **)malloc(new_capacity * sizeof(Resource *));
+        if (new_array == NULL) {
+            fprintf(stderr, "Error: Memory allocation failed.\n");
+            return;
+        }
 
-         array->resources = new_array;
-         array->capacity = new_capacity;
-     }
+        // Copy existing resources to new array
+        for (int i = 0; i < array->size; i++) {
+            new_array[i] = array->resources[i];
+        }
 
-     // Add the resource to the array
-     array-> resources[array->size] = resource;
+        // Free old array
+        free(array->resources);
 
-     // Increment the size of the array
-     array->size++;
- }
+        // Update array pointers and capacity
+        array->resources = new_array;
+        array->capacity = new_capacity;
+    }
+
+    // Add the resource to the array
+    array->resources[array->size] = resource;
+
+    // Increment the size of the array
+    array->size++;
+}
