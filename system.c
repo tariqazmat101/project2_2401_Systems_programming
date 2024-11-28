@@ -25,12 +25,12 @@ static int system_store_resources(System *);
  * @param[in]  event_queue     Pointer to the `EventQueue` for event handling.
  * @return                     STATUS_OK on success, STATUS_FAILURE on error.
  */
-int system_create(System **system, const char *name, ResourceAmount consumed, ResourceAmount produced, int processing_time, EventQueue *event_queue) {
+void system_create(System **system, const char *name, ResourceAmount consumed, ResourceAmount produced, int processing_time, EventQueue *event_queue) {
     // Allocate memory for the System structure
     *system = (System *)malloc(sizeof(System));
     if (*system == NULL) {
         fprintf(stderr, "Memory allocation failed for System.\n");
-        return STATUS_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     // Allocate memory and copy the name
@@ -38,7 +38,7 @@ int system_create(System **system, const char *name, ResourceAmount consumed, Re
     if ((*system)->name == NULL) {
         fprintf(stderr, "Memory allocation failed for System name.\n");
         free(*system); // Free the allocated memory for System
-        return STATUS_FAILURE;
+        exit(EXIT_FAILURE);
     }
     strcpy((*system)->name, name);
 
@@ -50,7 +50,6 @@ int system_create(System **system, const char *name, ResourceAmount consumed, Re
     (*system)->amount_stored = 0;
     (*system)->status = STATUS_OK;
 
-    return STATUS_OK;
 }
 
 /**

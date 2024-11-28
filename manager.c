@@ -31,7 +31,16 @@ void manager_init(Manager *manager) {
  *
  * @param[in,out] manager  Pointer to the `Manager` to clean.
  */
-void manager_clean(Manager *manager) {}
+void manager_clean(Manager *manager) {
+    if (!manager) return;
+
+    //Clean up the components
+    event_queue_clean(&manager->event_queue);
+    resource_array_clean(&manager->resource_array);
+    system_array_clean(&manager->system_array);
+
+    manager->simulation_running = 0;
+}
 
 /**
  * Runs the manager loop.

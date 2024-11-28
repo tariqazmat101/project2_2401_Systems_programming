@@ -17,12 +17,12 @@
  * @param[in]  max_capacity  Maximum capacity of the resource.
  * @return                   STATUS_OK on success, STATUS_FAILURE on error.
  */
-int resource_create(Resource **resource, const char *name, int amount, int max_capacity) {
+void resource_create(Resource **resource, const char *name, int amount, int max_capacity) {
     // Allocate memory for the Resource structure
     *resource = (Resource *)malloc(sizeof(Resource));
     if (*resource == NULL) {
         fprintf(stderr, "Failed to allocate memory for Resource.\n");
-        return STATUS_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     // Allocate memory for the name and copy it
@@ -30,7 +30,7 @@ int resource_create(Resource **resource, const char *name, int amount, int max_c
     if ((*resource)->name == NULL) {
         fprintf(stderr, "Failed to allocate memory for Resource name.\n");
         free(*resource); // Avoid memory leak
-        return STATUS_FAILURE;
+        exit(EXIT_FAILURE);
     }
     strcpy((*resource)->name, name);
 
@@ -38,7 +38,6 @@ int resource_create(Resource **resource, const char *name, int amount, int max_c
     (*resource)->amount = amount;
     (*resource)->max_capacity = max_capacity;
 
-    return STATUS_OK;
 }
 
 /**
